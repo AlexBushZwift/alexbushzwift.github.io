@@ -579,14 +579,20 @@
                 }
                 
                 if (entitiesContainer) {
-                    // Clear all entities
-                    const allEnts = entitiesContainer.querySelectorAll('ent');
-                    allEnts.forEach(ent => ent.remove());
+                    // Clear all content including text nodes
+                    while (entitiesContainer.firstChild) {
+                        entitiesContainer.removeChild(entitiesContainer.firstChild);
+                    }
                     
-                    // Add filtered entities
-                    filteredEntities.forEach(ent => {
+                    // Add filtered entities with proper formatting
+                    filteredEntities.forEach((ent, index) => {
+                        // Add a newline and indentation before each entity
+                        entitiesContainer.appendChild(newDoc.createTextNode('\n        '));
                         entitiesContainer.appendChild(ent.cloneNode(true));
                     });
+                    
+                    // Add final newline and closing indentation
+                    entitiesContainer.appendChild(newDoc.createTextNode('\n    '));
                 }
                 
                 // Serialize back to string
@@ -602,9 +608,19 @@
                     xmlString = xmlString.replace(/\s*<\/root>\s*$/, '');
                 }
                 
+                // Clean up any remaining extra whitespace and format properly
+                xmlString = this.cleanupXMLWhitespace(xmlString);
                 xmlString = this.formatXML(xmlString);
                 
                 return xmlString;
+            }
+
+            cleanupXMLWhitespace(xml) {
+                // Remove excessive whitespace between elements while preserving structure
+                return xml
+                    .replace(/>\s+</g, '><')  // Remove whitespace between tags
+                    .replace(/\n\s*\n/g, '\n')  // Remove multiple consecutive newlines
+                    .trim();
             }
 
             formatXML(xml) {
