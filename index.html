@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entity XML Processor - Event Modifier Baking Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #764ba2;
+            background: #f0f2ff;
+            transform: scale(1.02);
+        }
+
+        .drop-zone.file-loaded {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .drop-zone i {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .tags-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .tags-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .tag-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tag-card:hover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .tag-card.selected {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .tag-card h4 {
+            color: #495057;
+            margin-bottom: 5px;
+        }
+
+        .tag-card .count {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .progress-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status-message {
+            text-align: center;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .file-info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .file-info h4 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .file-info p {
+            margin: 5px 0;
+            color: #424242;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-cogs"></i> Entity XML Processor</h1>
+            <p>Bake event modifiers into entity XML files</p>
+        </div>
+
+        <div class="card">
+            <div class="drop-zone" id="dropZone">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <h3>Drag & Drop your entity XML file here</h3>
+                <p>or click to browse files</p>
+                <input type="file" id="fileInput" class="file-input" accept=".xml" />
+            </div>
+
+            <div class="file-info" id="fileInfo" style="display: none;">
+                <h4><i class="fas fa-file-alt"></i> File Information</h4>
+                <p><strong>Name:</strong> <span id="fileName"></span></p>
+                <p><strong>Size:</strong> <span id="fileSize"></span></p>
+                <p><strong>Total Entities:</strong> <span id="totalEntities"></span></p>
+                <p><strong>Road Props with Events:</strong> <span id="roadPropsCount"></span></p>
+            </div>
+
+            <div class="status-message" id="statusMessage"></div>
+        </div>
+
+        <div class="card tags-section" id="tagsSection">
+            <h3><i class="fas fa-tags"></i> Available Event Tags</h3>
+            <p>Select the event tag you want to bake into the entities:</p>
+            <div class="tags-grid" id="tagsGrid"></div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-success" id="processBtn" disabled>
+                    <i class="fas fa-magic"></i> Process File
+                </button>
+            </div>
+        </div>
+
+        <div class="card progress-section" id="progressSection">
+            <h3><i class="fas fa-spinner fa-spin"></i> Processing File</h3>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p id="progressText">Initializing...</p>
+        </div>
+    </div>
+
+    <script>
+        class EntityXMLProcessor {
+            constructor() {
+                this.xmlContent = null;
+                this.xmlDoc = null;
+                this.availableTags = new Map();
+                this.selectedTag = null;
+                this.fileName = '';
+                
+                this.initEventListeners();
+            }
+
+            initEventListeners() {
+                const dropZone = document.getElementById('dropZone');
+                const fileInput = document.getElementById('fileInput');
+                const processBtn = document.getElementById('processBtn');
+
+                // Drag and drop events
+                dropZone.addEventListener('click', () => fileInput.click());
+                dropZone.addEventListener('dragover', this.handleDragOver.bind(this));
+                dropZone.addEventListener('dragleave', this.handleDragLeave.bind(this));
+                dropZone.addEventListener('drop', this.handleDrop.bind(this));
+
+                // File input change
+                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+                // Process button
+                processBtn.addEventListener('click', this.processFile.bind(this));
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                document.getElementById('dropZone').classList.add('drag-over');
+            }
+
+            handleDragLeave(e) {
+                e.preventDefault();
+                document.getElementById('dropZone').classList.remove('drag-over');
+            }
+
+            handleDrop(e) {
+                e.preventDefault();
+                document.getElementById('dropZone').classList.remove('drag-over');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.loadFile(files[0]);
+                }
+            }
+
+            handleFileSelect(e) {
+                const files = e.target.files;
+                if (files.length > 0) {
+                    this.loadFile(files[0]);
+                }
+            }
+
+            async loadFile(file) {
+                try {
+                    this.fileName = file.name;
+                    const content = await this.readFileContent(file);
+                    this.xmlContent = content;
+                    
+                    await this.parseXML(content);
+                    this.analyzeEntities();
+                    this.displayFileInfo(file);
+                    this.displayTags();
+                    
+                    document.getElementById('dropZone').classList.add('file-loaded');
+                    this.showStatus('File loaded successfully!', 'success');
+                    
+                } catch (error) {
+                    console.error('Error loading file:', error);
+                    this.showStatus('Error loading file: ' + error.message, 'error');
+                }
+            }
+
+            readFileContent(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = e => resolve(e.target.result);
+                    reader.onerror = () => reject(new Error('Failed to read file'));
+                    reader.readAsText(file);
+                });
+            }
+
+            async parseXML(content) {
+                try {
+                    let xmlContent = content.trim();
+                    
+                    // Check if we have multiple root elements (like VERSION and world)
+                    const hasXmlDeclaration = xmlContent.startsWith('<?xml');
+                    
+                    if (hasXmlDeclaration) {
+                        // Extract content after XML declaration
+                        const xmlDeclarationEnd = xmlContent.indexOf('?>') + 2;
+                        const xmlDeclaration = xmlContent.substring(0, xmlDeclarationEnd);
+                        const bodyContent = xmlContent.substring(xmlDeclarationEnd).trim();
+                        
+                        // Count root elements by looking for top-level tags
+                        const rootElementMatches = bodyContent.match(/<[^\/\s>]+[^>]*>/g);
+                        
+                        if (rootElementMatches && rootElementMatches.length > 1) {
+                            // Multiple root elements detected, wrap them
+                            xmlContent = `${xmlDeclaration}\n<root>\n${bodyContent}\n</root>`;
+                        }
+                    } else {
+                        // No XML declaration, assume it's a fragment and wrap it
+                        xmlContent = `<?xml version="1.0" encoding="UTF-8"?>\n<root>\n${xmlContent}\n</root>`;
+                    }
+                    
+                    const parser = new DOMParser();
+                    this.xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
+                    
+                    // Check for parsing errors
+                    const parseError = this.xmlDoc.querySelector('parsererror');
+                    if (parseError) {
+                        throw new Error('XML parsing error: ' + parseError.textContent);
+                    }
+                    
+                } catch (error) {
+                    throw new Error('Failed to parse XML: ' + error.message);
+                }
+            }
+
+            analyzeEntities() {
+                this.availableTags.clear();
+                
+                // Find all ent elements with type="ENTITY_TYPE_ROADPROP" and eventOverride children
+                const roadProps = this.xmlDoc.querySelectorAll('ent[type="ENTITY_TYPE_ROADPROP"]');
+                
+                roadProps.forEach(ent => {
+                    const eventOverrides = ent.querySelectorAll('eventOverride');
+                    if (eventOverrides.length > 0) {
+                        eventOverrides.forEach(override => {
+                            const tag = override.getAttribute('tag');
+                            if (tag) {
+                                if (!this.availableTags.has(tag)) {
+                                    this.availableTags.set(tag, 0);
+                                }
+                                this.availableTags.set(tag, this.availableTags.get(tag) + 1);
+                            }
+                        });
+                    }
+                });
+            }
+
+            displayFileInfo(file) {
+                const totalEntities = this.xmlDoc.querySelectorAll('ent').length;
+                const roadPropsWithEvents = this.xmlDoc.querySelectorAll('ent[type="ENTITY_TYPE_ROADPROP"]')
+                    .length;
+
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('fileSize').textContent = this.formatFileSize(file.size);
+                document.getElementById('totalEntities').textContent = totalEntities;
+                document.getElementById('roadPropsCount').textContent = roadPropsWithEvents;
+                document.getElementById('fileInfo').style.display = 'block';
+            }
+
+            displayTags() {
+                const tagsGrid = document.getElementById('tagsGrid');
+                tagsGrid.innerHTML = '';
+
+                if (this.availableTags.size === 0) {
+                    tagsGrid.innerHTML = '<p>No event tags found in this file.</p>';
+                    return;
+                }
+
+                this.availableTags.forEach((count, tag) => {
+                    const tagCard = document.createElement('div');
+                    tagCard.className = 'tag-card';
+                    tagCard.innerHTML = `
+                        <h4>${tag}</h4>
+                        <div class="count">${count} entities</div>
+                    `;
+                    
+                    tagCard.addEventListener('click', () => this.selectTag(tag, tagCard));
+                    tagsGrid.appendChild(tagCard);
+                });
+
+                document.getElementById('tagsSection').style.display = 'block';
+            }
+
+            selectTag(tag, cardElement) {
+                // Remove previous selection
+                document.querySelectorAll('.tag-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+
+                // Select new tag
+                cardElement.classList.add('selected');
+                this.selectedTag = tag;
+                document.getElementById('processBtn').disabled = false;
+            }
+
+            async processFile() {
+                if (!this.selectedTag) {
+                    this.showStatus('Please select a tag first.', 'error');
+                    return;
+                }
+
+                document.getElementById('progressSection').style.display = 'block';
+                this.updateProgress(0, 'Starting processing...');
+
+                try {
+                    await this.sleep(200); // Small delay for UI update
+                    
+                    // Step 1: Filter entities
+                    this.updateProgress(25, 'Filtering entities...');
+                    const filteredEntities = this.filterEntities();
+                    
+                    await this.sleep(200);
+                    
+                    // Step 2: Bake mesh attributes
+                    this.updateProgress(50, 'Baking mesh attributes...');
+                    this.bakeMeshAttributes(filteredEntities);
+                    
+                    await this.sleep(200);
+                    
+                    // Step 3: Remove eventOverride elements
+                    this.updateProgress(75, 'Removing event overrides...');
+                    this.removeEventOverrides(filteredEntities);
+                    
+                    await this.sleep(200);
+                    
+                    // Step 4: Generate output
+                    this.updateProgress(100, 'Generating download...');
+                    const processedXML = this.generateProcessedXML(filteredEntities);
+                    
+                    await this.sleep(300);
+                    
+                    this.downloadFile(processedXML);
+                    this.showStatus(`Successfully processed ${filteredEntities.length} entities with tag "${this.selectedTag}"`, 'success');
+                    
+                } catch (error) {
+                    console.error('Processing error:', error);
+                    this.showStatus('Error processing file: ' + error.message, 'error');
+                } finally {
+                    setTimeout(() => {
+                        document.getElementById('progressSection').style.display = 'none';
+                    }, 2000);
+                }
+            }
+
+            filterEntities() {
+                const roadProps = this.xmlDoc.querySelectorAll('ent[type="ENTITY_TYPE_ROADPROP"]');
+                const filtered = [];
+                
+                roadProps.forEach(ent => {
+                    const eventOverrides = ent.querySelectorAll('eventOverride');
+                    const hasMatchingTag = Array.from(eventOverrides).some(override => 
+                        override.getAttribute('tag') === this.selectedTag
+                    );
+                    
+                    if (hasMatchingTag) {
+                        filtered.push(ent);
+                    }
+                });
+                
+                return filtered;
+            }
+
+            bakeMeshAttributes(entities) {
+                entities.forEach(ent => {
+                    const eventOverrides = ent.querySelectorAll('eventOverride');
+                    const matchingOverride = Array.from(eventOverrides).find(override => 
+                        override.getAttribute('tag') === this.selectedTag
+                    );
+                    
+                    if (matchingOverride) {
+                        const meshPath = matchingOverride.getAttribute('mesh');
+                        if (meshPath) {
+                            ent.setAttribute('m_propHiResGdePath', meshPath);
+                        }
+                    }
+                });
+            }
+
+            removeEventOverrides(entities) {
+                entities.forEach(ent => {
+                    const eventOverrides = ent.querySelectorAll('eventOverride');
+                    eventOverrides.forEach(override => {
+                        override.remove();
+                    });
+                });
+            }
+
+            generateProcessedXML(filteredEntities) {
+                // Create a new document with the same structure
+                const newDoc = this.xmlDoc.cloneNode(true);
+                
+                // Find the entities container (could be under world or directly under root)
+                let entitiesContainer = newDoc.querySelector('entities');
+                if (!entitiesContainer) {
+                    entitiesContainer = newDoc.querySelector('world entities');
+                }
+                
+                if (entitiesContainer) {
+                    // Clear all entities
+                    const allEnts = entitiesContainer.querySelectorAll('ent');
+                    allEnts.forEach(ent => ent.remove());
+                    
+                    // Add filtered entities
+                    filteredEntities.forEach(ent => {
+                        entitiesContainer.appendChild(ent.cloneNode(true));
+                    });
+                }
+                
+                // Serialize back to string
+                const serializer = new XMLSerializer();
+                let xmlString = serializer.serializeToString(newDoc);
+                
+                // Clean up the output to match original format
+                xmlString = xmlString.replace(/xmlns="[^"]*"/g, '');
+                
+                // If we added a wrapper root element, remove it
+                if (xmlString.includes('<root>')) {
+                    xmlString = xmlString.replace(/<\?xml[^>]*\?>\s*<root>\s*/, '<?xml version="1.0" encoding="UTF-8"?>\n');
+                    xmlString = xmlString.replace(/\s*<\/root>\s*$/, '');
+                }
+                
+                xmlString = this.formatXML(xmlString);
+                
+                return xmlString;
+            }
+
+            formatXML(xml) {
+                const formatted = [];
+                const reg = /(>)(<)(\/*)/g;
+                xml = xml.replace(reg, '$1\r\n$2$3');
+                let pad = 0;
+                
+                xml.split('\r\n').forEach(node => {
+                    // Skip empty lines and lines with only whitespace
+                    const trimmed = node.trim();
+                    if (trimmed === '') {
+                        return;
+                    }
+                    
+                    let indent = 0;
+                    if (trimmed.match(/.+<\/\w[^>]*>$/)) {
+                        indent = 0;
+                    } else if (trimmed.match(/^<\/\w/)) {
+                        if (pad != 0) {
+                            pad -= 1;
+                        }
+                    } else if (trimmed.match(/^<\w[^>]*[^\/]>.*$/)) {
+                        indent = 1;
+                    } else {
+                        indent = 0;
+                    }
+                    
+                    const padding = '    '.repeat(pad);
+                    formatted.push(padding + trimmed);
+                    pad += indent;
+                });
+                
+                return formatted.join('\r\n');
+            }
+
+            downloadFile(content) {
+                const blob = new Blob([content], { type: 'application/xml' });
+                const url = URL.createObjectURL(blob);
+                
+                const baseName = this.fileName.replace(/\.[^/.]+$/, '');
+                const downloadName = `${baseName}_${this.selectedTag}_baked.xml`;
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = downloadName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            updateProgress(percent, text) {
+                document.getElementById('progressFill').style.width = percent + '%';
+                document.getElementById('progressText').textContent = text;
+            }
+
+            showStatus(message, type) {
+                const statusElement = document.getElementById('statusMessage');
+                statusElement.textContent = message;
+                statusElement.className = `status-message status-${type}`;
+                statusElement.style.display = 'block';
+                
+                if (type === 'success') {
+                    setTimeout(() => {
+                        statusElement.style.display = 'none';
+                    }, 5000);
+                }
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Initialize the processor when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new EntityXMLProcessor();
+        });
+    </script>
+</body>
+</html>
