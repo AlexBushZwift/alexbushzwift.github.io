@@ -655,8 +655,8 @@
                 
                 // If we added a wrapper root element, remove it
                 if (xmlString.includes('<root>')) {
-                    xmlString = xmlString.replace(/<\?xml[^>]*\?>\s*<root>\s*/, '<?xml version="1.0" encoding="UTF-8"?>\n');
-                    xmlString = xmlString.replace(/\s*<\/root>\s*$/, '');
+                    xmlString = xmlString.replace('<root>', '');
+                    xmlString = xmlString.replace('<\/root>', '');
                 }
                 
                 // Clean up any remaining extra whitespace and format properly
