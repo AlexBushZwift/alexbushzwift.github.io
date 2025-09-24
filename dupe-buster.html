@@ -817,7 +817,7 @@
                     if (trimmed.match(/.+<\/\w[^>]*>$/)) {
                         indent = 0;
                     } else if (trimmed.match(/^<\/\w/)) {
-                        if (pad != 0) {
+                        if (pad !== 0) {
                             pad -= 1;
                         }
                     } else if (trimmed.match(/^<\w[^>]*[^\/]>.*$/)) {
