@@ -249,6 +249,67 @@
             margin-bottom: 10px;
         }
 
+        .editing-mode-section {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .editing-mode-section h4 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 10px 15px;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .radio-option:hover {
+            border-color: #667eea;
+        }
+
+        .radio-option input[type="radio"] {
+            margin: 0;
+        }
+
+        .radio-option.selected {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .radio-option .option-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .radio-option .option-title {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .radio-option .option-description {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 2px;
+        }
+
         .file-info p {
             margin: 5px 0;
             color: #424242;
@@ -316,6 +377,27 @@
             <h3><i class="fas fa-tags"></i> Available Event Tags</h3>
             <p>Select the event tag you want to bake into the entities:</p>
             <div class="tags-grid" id="tagsGrid"></div>
+            
+            <div class="editing-mode-section">
+                <h4><i class="fas fa-edit"></i> Processing Mode</h4>
+                <div class="radio-group">
+                    <label class="radio-option" id="newFileOption">
+                        <input type="radio" name="editingMode" value="newFile" checked>
+                        <div class="option-details">
+                            <div class="option-title">Create New File</div>
+                            <div class="option-description">Download processed entities as a new file</div>
+                        </div>
+                    </label>
+                    <label class="radio-option" id="inPlaceOption">
+                        <input type="radio" name="editingMode" value="inPlace">
+                        <div class="option-details">
+                            <div class="option-title">In-Place Editing</div>
+                            <div class="option-description">Modify entities in the original file structure</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            
             <div style="text-align: center; margin-top: 20px;">
                 <button class="btn btn-success" id="processBtn" disabled>
                     <i class="fas fa-magic"></i> Process File
@@ -340,6 +422,8 @@
                 this.availableTags = new Map();
                 this.selectedTag = null;
                 this.fileName = '';
+                this.editingMode = 'newFile';
+                this.originalXMLContent = null;
                 
                 this.initEventListeners();
             }
@@ -360,6 +444,18 @@
 
                 // Process button
                 processBtn.addEventListener('click', this.processFile.bind(this));
+
+                // Setup editing mode radio buttons
+                const editingModeRadios = document.querySelectorAll('input[name="editingMode"]');
+                editingModeRadios.forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        this.editingMode = e.target.value;
+                        this.updateRadioSelection();
+                    });
+                });
+
+                // Initial radio selection styling
+                this.updateRadioSelection();
             }
 
             handleDragOver(e) {
@@ -370,6 +466,18 @@
             handleDragLeave(e) {
                 e.preventDefault();
                 document.getElementById('dropZone').classList.remove('drag-over');
+            }
+
+            updateRadioSelection() {
+                const options = document.querySelectorAll('.radio-option');
+                options.forEach(option => {
+                    const radio = option.querySelector('input[type="radio"]');
+                    if (radio.checked) {
+                        option.classList.add('selected');
+                    } else {
+                        option.classList.remove('selected');
+                    }
+                });
             }
 
             handleDrop(e) {
@@ -394,6 +502,7 @@
                     this.fileName = file.name;
                     const content = await this.readFileContent(file);
                     this.xmlContent = content;
+                    this.originalXMLContent = content;
                     
                     await this.parseXML(content);
                     this.analyzeEntities();
@@ -558,13 +667,20 @@
                     await this.sleep(200);
                     
                     // Step 4: Generate output
-                    this.updateProgress(100, 'Generating download...');
-                    const processedXML = this.generateProcessedXML(filteredEntities);
+                    this.updateProgress(100, 'Generating output...');
+                    
+                    let processedXML;
+                    if (this.editingMode === 'inPlace') {
+                        processedXML = this.generateInPlaceProcessedXML();
+                    } else {
+                        processedXML = this.generateProcessedXML(filteredEntities);
+                    }
                     
                     await this.sleep(300);
                     
                     this.downloadFile(processedXML);
-                    this.showStatus(`Successfully processed ${filteredEntities.length} entities with tag "${this.selectedTag}"`, 'success');
+                    const modeText = this.editingMode === 'inPlace' ? '(in-place editing)' : '(new file)';
+                    this.showStatus(`Successfully processed ${filteredEntities.length} entities with tag "${this.selectedTag}" ${modeText}`, 'success');
                     
                 } catch (error) {
                     console.error('Processing error:', error);
@@ -664,6 +780,78 @@
                 xmlString = this.formatXML(xmlString);
                 
                 return xmlString;
+            }
+
+            generateInPlaceProcessedXML() {
+                console.log('Starting in-place processing with DOM approach...');
+                
+                // Create a deep copy of the original XML document to work with
+                const xmlString = new XMLSerializer().serializeToString(this.xmlDoc);
+                const parser = new DOMParser();
+                const workingDoc = parser.parseFromString(xmlString, 'text/xml');
+                
+                // Get all road prop entities that need processing from the working document
+                const roadProps = workingDoc.querySelectorAll('ent[type="ENTITY_TYPE_ROADPROP"]');
+                let processedCount = 0;
+                
+                console.log(`Found ${roadProps.length} road prop entities to check`);
+                
+                roadProps.forEach((ent, index) => {
+                    const eventOverrides = ent.querySelectorAll('eventOverride');
+                    const matchingOverride = Array.from(eventOverrides).find(override => 
+                        override.getAttribute('tag') === this.selectedTag
+                    );
+                    
+                    if (matchingOverride) {
+                        console.log(`Processing entity ${index + 1} with matching tag "${this.selectedTag}"`);
+                        processedCount++;
+                        
+                        // Apply mesh attribute changes directly to the DOM element
+                        const meshAttr = matchingOverride.getAttribute('mesh');
+                        if (meshAttr) {
+                            console.log(`  - Setting mesh attribute to: ${meshAttr}`);
+                            ent.setAttribute('mesh', meshAttr);
+                        }
+                        
+                        // Remove all eventOverride elements from this entity
+                        const allEventOverrides = ent.querySelectorAll('eventOverride');
+                        allEventOverrides.forEach(override => {
+                            console.log(`  - Removing eventOverride with tag: ${override.getAttribute('tag')}`);
+                            override.parentNode.removeChild(override);
+                        });
+                        
+                        // After removing eventOverrides, check if the entity is now empty
+                        // If so, make it self-closing
+                        if (ent.children.length === 0 && (!ent.textContent || ent.textContent.trim() === '')) {
+                            console.log(`  - Making entity self-closing (no children remaining)`);
+                            // We'll handle this in the serialization step below
+                        }
+                    }
+                });
+                
+                console.log(`Successfully processed ${processedCount} entities`);
+                
+                // Serialize the modified document back to XML string
+                const serializer = new XMLSerializer();
+                let modifiedXML = serializer.serializeToString(workingDoc);
+                
+                // Remove the artificial <root> wrapper that was added during parsing
+                // This handles the case where we had to wrap multiple root elements
+                if (modifiedXML.includes('<root>')) {
+                    console.log('Removing artificial root wrapper...');
+                    modifiedXML = modifiedXML.replace(/<\?xml[^>]*>\s*<root>\s*/, '<?xml version="1.0" encoding="UTF-8"?>\n');
+                    modifiedXML = modifiedXML.replace(/\s*<\/root>\s*$/, '');
+                }
+                
+                // Convert empty entity tags to self-closing format
+                // Look for <ent ...></ent> patterns with only whitespace between tags
+                modifiedXML = modifiedXML.replace(/<ent([^>]*)>\s*<\/ent>/g, '<ent$1/>');
+                
+                // Clean up the XML formatting to maintain readability
+                modifiedXML = this.formatXML(modifiedXML);
+                
+                console.log('In-place processing completed');
+                return modifiedXML;
             }
 
             cleanupXMLWhitespace(xml) {
